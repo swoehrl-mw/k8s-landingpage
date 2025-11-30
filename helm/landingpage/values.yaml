@@ -1,0 +1,79 @@
+image:
+  repository: ghcr.io/swoehrl-mw/k8s-landingpage
+  # This sets the pull policy for images.
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ""
+
+# This is for the secretes for pulling an image from a private repository more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+imagePullSecrets: []
+
+# This is to override the chart name.
+nameOverride: ""
+fullnameOverride: ""
+
+replicas: 1
+
+#This section builds out the service account more information can be found here: https://kubernetes.io/docs/concepts/security/service-accounts/
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Automatically mount a ServiceAccount's API credentials?
+  automount: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+  # Create clusterrolebinding to access secrets and ingresses
+  rbac: true
+
+
+podAnnotations: {}
+podLabels: {}
+
+resources:
+  limits:
+    cpu: 200m
+    memory: 128Mi
+  requests:
+    cpu: 50m
+    memory: 128Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+
+service:
+  type: ClusterIP
+  port: 8000
+
+config:
+  global:
+    refreshIntervalSeconds: 30
+    onlyWithAnnotation: false
+
+  local:
+    enabled: true
+
+  # remote:
+  #   - name: foobar
+  #     kubeconfigSecret:
+  #       name: foobar
+  #       namespace: default
+
+
+oidc:
+  enabled: false
+  issuer: # URL of the OIDC Identitiy Provider Issuer URL
+  secret: # Name of the secret that contains keys "clientId" and "clientSecret"
+  baseUrl: # Base URL this app is served under (used for the Identitiy Provider Redirect URL)
+
+
+# Set to name of a configmap that contains a template.html key to override the default template
+templateConfigMap:
+# Set to name of a configmap that contains static files to be served under the /static http path
+staticConfigMap:

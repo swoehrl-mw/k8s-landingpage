@@ -1,0 +1,13 @@
+global:
+  refreshIntervalSeconds: 30
+  onlyWithAnnotation: false
+
+local:
+  enabled: true
+
+remote:
+  - name: foobar
+    kubeconfigSecret:
+      name: foobar
+      namespace: default
+

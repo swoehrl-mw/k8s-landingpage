@@ -1,0 +1,54 @@
+name: release
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  GITHUB_REF: ${{ github.ref }}
+
+jobs:
+  release:
+    name: Create new release
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Check out the repo
+        uses: actions/checkout@v2
+
+      - name: Log in to GitHub Docker Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image to GitHub Container Registry
+        run: |
+          IMAGE_ID=ghcr.io/${{ github.repository_owner }}/k8s-landingpage
+          IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
+          TAG=${GITHUB_REF//refs\/tags\/v}
+          VERSION=${GITHUB_REF//refs\/tags\/v}
+          sed -i 's/version = "0.1.0"/version = "'${VERSION}'"/' Cargo.toml
+          docker build . -t $IMAGE_ID:$TAG --push
+
+      - name: Prepare and publish helm chart
+        run: |
+          VERSION=${GITHUB_REF//refs\/tags\/v}
+
+          sed -i 's/version:.*/version: '${VERSION}'/' helm/landingpage/Chart.yaml
+          sed -i 's/appVersion:.*/appVersion: '${VERSION}'/' helm/landingpage/Chart.yaml
+
+          helm package helm/landingpage
+          helm push k8s-landingpage-${VERSION}.tgz oci://ghcr.io/swoehrl-mw/helm/
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: "${{ github.ref }}"
+          draft: true
+          prerelease: false

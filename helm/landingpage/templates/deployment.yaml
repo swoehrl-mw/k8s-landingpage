@@ -1,0 +1,139 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "landingpage.fullname" . }}
+  labels:
+    {{- include "landingpage.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicas }}
+  selector:
+    matchLabels:
+      {{- include "landingpage.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- if or .Values.podAnnotations .Values.config }}
+      annotations:
+        {{- if .Values.config }}
+        checksum/config: {{ .Values.config | toString | sha1sum }}
+        {{- end }}
+        {{- if .Values.podAnnotations }}
+        {{- toYaml .Values.podAnnotations | nindent 8 }}
+        {{- end }}
+      {{- end }}
+      labels:
+        {{- include "landingpage.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "landingpage.serviceAccountName" . }}
+      securityContext:
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      terminationGracePeriodSeconds: 5
+      containers:
+        - name: landingpage
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+            capabilities:
+              drop:
+                - ALL
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /app/config
+            {{- if .Values.templateConfigMap }}
+            - name: template
+              mountPath: /app/template
+            {{- end }}
+            {{- if .Values.staticConfigMap }}
+            - name: staticfiles
+              mountPath: /app/static
+            {{- end }}
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+              scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+              scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          env:
+            - name: CONFIG_FILE
+              value: /app/config/config.toml
+            {{- if .Values.templateConfigMap }}
+            - name: TEMPLATE_PATH
+              value: /app/template/template.html
+            {{- end }}
+            {{- if .Values.staticConfigMap }}
+            - name: STATIC_DIR
+              value: /app/static
+            {{- end }}
+            {{- if .Values.oidc.enabled }}
+            - name: OIDC_ISSUER
+              value: {{ .Values.oidc.issuer }}
+            - name: OIDC_BASE_URL
+              value: {{ .Values.oidc.baseUrl }}
+            - name: OIDC_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.oidc.secret }}
+                  key: clientId
+            - name: OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.oidc.secret }}
+                  key: clientSecret
+            {{- end }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "landingpage.name" . }}
+        {{- if .Values.templateConfigMap }}
+        - name: template
+          configMap:
+            name: {{ .Values.templateConfigMap }}
+        {{- end }}
+        {{- if .Values.staticConfigMap }}
+        - name: staticfiles
+          configMap:
+            name: {{ .Values.staticConfigMap }}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

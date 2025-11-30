@@ -1,0 +1,8 @@
+{% for cluster in clusters %}
+<h2>{{cluster.name}} {% if cluster.description %} ({{cluster.description}}){% endif %}</h2>
+<ul>
+{% for ingress in cluster.ingresses %}
+<li><a href="{{ingress.url}}">{{ingress.name}}</a>{% if ingress.description%} ({{ingress.description}}){% endif %}</li>
+{% endfor %}
+</ul>
+{% endfor %}
