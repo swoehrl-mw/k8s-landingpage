@@ -69,6 +69,7 @@ oidc:
   issuer: https://auth.mycompany.com  # URL of the OIDC Identitiy Provider Issuer URL
   secret: landingpage-oidc  # Name of the secret that contains keys "clientId" and "clientSecret"
   baseUrl: https://landingpage  # Base URL this app is served under (use it also for the Identitiy Provider Redirect URL)
+  renewalInterval: # Optional, interval in seconds after which to reload OIDC discovery URL. Use if your Identity Provider rotates keys regularly (like Dex does)
 ```
 
 Currently you must still create your own ingress to expose the landingpage.

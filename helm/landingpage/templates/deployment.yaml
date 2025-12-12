@@ -100,6 +100,10 @@ spec:
               value: {{ .Values.oidc.issuer }}
             - name: OIDC_BASE_URL
               value: {{ .Values.oidc.baseUrl }}
+            {{- if .Values.oidc.renewalInterval }}
+            - name: OIDC_RENEWAL_INTERVAL_SECONDS
+              value: {{ .Values.oidc.renewalInterval }}
+            {{- end }}
             - name: OIDC_CLIENT_ID
               valueFrom:
                 secretKeyRef:

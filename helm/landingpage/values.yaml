@@ -71,7 +71,7 @@ oidc:
   issuer: # URL of the OIDC Identitiy Provider Issuer URL
   secret: # Name of the secret that contains keys "clientId" and "clientSecret"
   baseUrl: # Base URL this app is served under (used for the Identitiy Provider Redirect URL)
-
+  renewalInterval: # Optional, interval in seconds after which to reload OIDC discovery URL. Use if your Identity Provider rotates keys regularly
 
 # Set to name of a configmap that contains a template.html key to override the default template
 templateConfigMap:

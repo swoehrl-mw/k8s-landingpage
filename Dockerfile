@@ -1,4 +1,4 @@
-FROM clux/muslrust:1.91.0-stable AS builder
+FROM clux/muslrust:1.92.0-stable AS builder
 RUN mkdir /build
 WORKDIR /build
 COPY Cargo.toml Cargo.lock /build/

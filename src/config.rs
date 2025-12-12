@@ -8,11 +8,11 @@ pub struct Config {
 }
 
 #[derive(Deserialize, Debug, Clone, Default)]
-#[serde(rename_all="camelCase")]
+#[serde(rename_all = "camelCase")]
 pub struct Global {
     #[serde(default)]
     pub only_with_annotation: bool,
-    pub refresh_interval_seconds: Option<u64>
+    pub refresh_interval_seconds: Option<u64>,
 }
 
 #[derive(Deserialize, Debug, Clone, Default)]
@@ -23,7 +23,7 @@ pub struct LocalCluster {
 }
 
 #[derive(Deserialize, Debug, Clone, Default)]
-#[serde(rename_all="camelCase")]
+#[serde(rename_all = "camelCase")]
 pub struct RemoteCluster {
     pub name: String,
     pub description: Option<String>,
@@ -38,6 +38,9 @@ pub struct KubeconfigSecret {
 }
 
 pub fn read_config() -> Config {
-    let data = std::fs::read_to_string(std::env::var("CONFIG_FILE").unwrap_or_else(|_| "config.yaml".to_owned())).unwrap();
+    let data = std::fs::read_to_string(
+        std::env::var("CONFIG_FILE").unwrap_or_else(|_| "config.yaml".to_owned()),
+    )
+    .unwrap();
     serde_yaml::from_str(&data).unwrap()
 }

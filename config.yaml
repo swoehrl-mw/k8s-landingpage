@@ -5,9 +5,9 @@ global:
 local:
   enabled: true
 
-remote:
-  - name: foobar
-    kubeconfigSecret:
-      name: foobar
-      namespace: default
+# remote:
+#   - name: foobar
+#     kubeconfigSecret:
+#       name: foobar
+#       namespace: default
 
