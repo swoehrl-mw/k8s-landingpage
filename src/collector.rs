@@ -64,11 +64,11 @@ async fn run_collector_task(config: Config, info: IngressCollectionWrapper) {
         .unwrap_or(30);
     loop {
         tokio::time::sleep(Duration::from_secs(refresh_interval)).await;
-        println!("Reloading ingresses");
+        tracing::info!("Reloading ingresses");
         let new_info = match collect_for_all_clusters(&config).await {
             Ok(result) => result,
             Err(err) => {
-                println!("Encountered error when reloading ingresses: {err}");
+                tracing::error!("Encountered error when reloading ingresses: {err}");
                 continue;
             }
         };
@@ -124,7 +124,7 @@ async fn collect_from_remote(
     let remote_client = match kubeconfig(remote, client).await {
         Ok(client) => client,
         Err(err) => {
-            println!("Could not create client to remote cluster: {err}");
+            tracing::error!("Could not create client to remote cluster: {err}");
             return None;
         }
     };
@@ -134,7 +134,7 @@ async fn collect_from_remote(
         for namespace in namespaces.iter() {
             match collect_ingresses(config, remote_client.clone(), Some(namespace)).await {
                 Ok(mut specs) => collected.append(&mut specs),
-                Err(err) => println!("Could not read ingressess from cluster: {err}"),
+                Err(err) => tracing::error!("Could not read ingressess from cluster: {err}"),
             }
         }
         Some(transform_to_info(
@@ -150,7 +150,7 @@ async fn collect_from_remote(
                 specs,
             )),
             Err(err) => {
-                println!("Could not read ingressess from cluster: {err}");
+                tracing::error!("Could not read ingressess from cluster: {err}");
                 None
             }
         }

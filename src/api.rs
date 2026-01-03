@@ -55,6 +55,7 @@ pub struct InnerOidcState {
 
 impl InnerOidcState {
     pub async fn renew_layer(&mut self) {
+        tracing::info!("Renewing oidc config");
         let layer = OidcAuthLayer::<EmptyAdditionalClaims>::discover_client(
             Uri::from_maybe_shared(self.base_url.clone()).expect("OIDC_BASE_URL is not valid"),
             self.issuer.clone(),
@@ -112,6 +113,7 @@ async fn oidc_layer(
 
 pub async fn api(collection: IngressCollectionWrapper) {
     let template = if let Ok(template_path) = std::env::var("TEMPLATE_PATH") {
+        tracing::info!("Using custom template at {template_path}");
         std::fs::read_to_string(template_path).unwrap()
     } else {
         std::fs::read_to_string("template.html").unwrap()
@@ -123,7 +125,7 @@ pub async fn api(collection: IngressCollectionWrapper) {
         .layer(Extension(template));
 
     let app = if let Ok(issuer) = std::env::var("OIDC_ISSUER") {
-        println!("Configuring OIDC with issuer {issuer}");
+        tracing::info!("Configuring OIDC with issuer {issuer}");
 
         let session_store = MemoryStore::default();
         let session_layer = SessionManagerLayer::new(session_store)
@@ -150,14 +152,14 @@ pub async fn api(collection: IngressCollectionWrapper) {
     let app = app.route("/health", get(health));
 
     let app = if let Ok(static_dir) = std::env::var("STATIC_FOLDER") {
-        println!("Adding static folder");
+        tracing::info!("Adding static folder at {static_dir}");
         app.nest_service("/static", get_service(ServeDir::new(static_dir)))
     } else {
         app
     };
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 8000));
-    println!("Listening on {}", addr);
+    tracing::info!("Listening on {}", addr);
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
     axum::serve(listener, app).await.unwrap();
 }

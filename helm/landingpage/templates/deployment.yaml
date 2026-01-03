@@ -115,6 +115,10 @@ spec:
                   name: {{ .Values.oidc.secret }}
                   key: clientSecret
             {{- end }}
+            - name: RUST_LOG
+              value: {{ .Values.logging.level }}
+            - name: LOGGING_MODE
+              value: {{ .Values.logging.mode }}
       volumes:
         - name: config
           configMap:

@@ -77,3 +77,7 @@ oidc:
 templateConfigMap:
 # Set to name of a configmap that contains static files to be served under the /static http path
 staticConfigMap:
+
+logging:
+  mode: plain # Either plain or json to use for log output
+  level: info # Possible values: trace, debug, info, warn, error
