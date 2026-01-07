@@ -37,11 +37,12 @@ config:
 
   # A list of remote clusters to collect ingress objects from
   remote:
-    - name: foobar  # The name of the cluster
-      description:  # An optional description to show beside the cluster name
-      kubeconfigSecret:
-        name: foobar  # The name of the secret that contains a key "value" with the kubeconfig to access the remote cluster
-        namespace: default  # Namespace the secret is placed in
+    groupname: # A group of clusters (e.g. all prod clusters)
+      - name: foobar  # The name of the cluster
+        description:  # An optional description to show beside the cluster name
+        kubeconfigSecret:
+          name: foobar  # The name of the secret that contains a key "value" with the kubeconfig to access the remote cluster
+          namespace: default  # Namespace the secret is placed in
 ```
 
 You can use annotations on the ingress objects to provide easy to understand names and descriptions. The annotations are `landingpage.info/name` and `landingpage.info/description`.

@@ -221,34 +221,41 @@
             <p class="subtitle">Kubernetes Cluster Ingress Overview</p>
         </header>
 
-        <div class="clusters-grid">
-            {% for cluster in clusters %}
-            <article class="cluster-card">
-                <div class="cluster-header">
-                    <h2 class="cluster-name">{{ cluster.name }}</h2>
-                    {% if cluster.description %}
-                    <p class="cluster-desc">{{ cluster.description }}</p>
-                    {% endif %}
-                </div>
+        {% for group in groups %}
+        <section style="margin-bottom: var(--spacing-xl);">
+            <header style="margin-bottom: var(--spacing-lg);">
+                <h2 class="cluster-name" style="font-size: 1.75rem;">{{ group.name }}</h2>
+            </header>
+            <div class="clusters-grid">
+                {% for cluster in group.clusters %}
+                <article class="cluster-card">
+                    <div class="cluster-header">
+                        <h3 class="cluster-name">{{ cluster.name }}</h3>
+                        {% if cluster.description %}
+                        <p class="cluster-desc">{{ cluster.description }}</p>
+                        {% endif %}
+                    </div>
 
-                <ul class="ingress-list">
-                    {% for ingress in cluster.ingresses %}
-                    <li class="ingress-item">
-                        <a href="{{ ingress.url }}" class="ingress-link" target="_blank" rel="noopener noreferrer">
-                            <div>
-                                <span class="ingress-name">{{ ingress.name }}</span>
-                                {% if ingress.description %}
-                                <span class="ingress-desc">{{ ingress.description }}</span>
-                                {% endif %}
-                            </div>
-                            <span class="arrow-icon">→</span>
-                        </a>
-                    </li>
-                    {% endfor %}
-                </ul>
-            </article>
-            {% endfor %}
-        </div>
+                    <ul class="ingress-list">
+                        {% for ingress in cluster.ingresses %}
+                        <li class="ingress-item">
+                            <a href="{{ ingress.url }}" class="ingress-link" target="_blank" rel="noopener noreferrer">
+                                <div>
+                                    <span class="ingress-name">{{ ingress.name }}</span>
+                                    {% if ingress.description %}
+                                    <span class="ingress-desc">{{ ingress.description }}</span>
+                                    {% endif %}
+                                </div>
+                                <span class="arrow-icon">→</span>
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </article>
+                {% endfor %}
+            </div>
+        </section>
+        {% endfor %}
     </div>
 </body>
 

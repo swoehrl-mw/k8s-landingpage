@@ -1,10 +1,15 @@
+use std::collections::HashMap;
+
 use serde::Deserialize;
+
+#[derive(Deserialize, Debug, Clone, Default, PartialEq, Eq, Hash)]
+pub struct GroupName(pub String);
 
 #[derive(Deserialize, Debug, Clone, Default)]
 pub struct Config {
     pub global: Option<Global>,
     pub local: Option<LocalCluster>,
-    pub remote: Option<Vec<RemoteCluster>>,
+    pub remote: Option<HashMap<GroupName, Vec<RemoteCluster>>>,
 }
 
 #[derive(Deserialize, Debug, Clone, Default)]

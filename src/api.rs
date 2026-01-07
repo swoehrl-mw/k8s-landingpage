@@ -34,7 +34,7 @@ async fn index(
     let collection = collection.read().await;
     Html(
         template
-            .render(context! { clusters => collection.clone()})
+            .render(context! { groups => collection.clone()})
             .unwrap(),
     )
 }

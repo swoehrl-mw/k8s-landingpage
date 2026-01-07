@@ -40,13 +40,19 @@ pub struct ClusterInfo {
 }
 
 #[derive(Clone, Debug, Serialize)]
+pub struct GroupInfo {
+    pub name: String,
+    pub clusters: Vec<ClusterInfo>,
+}
+
+#[derive(Clone, Debug, Serialize)]
 pub struct IngressInfo {
     pub name: String,
     pub description: String,
     pub url: String,
 }
 
-pub type IngressCollection = Vec<ClusterInfo>;
+pub type IngressCollection = Vec<GroupInfo>;
 pub type IngressCollectionWrapper = Arc<RwLock<IngressCollection>>;
 
 pub async fn start_collector(config: Config) -> Result<IngressCollectionWrapper> {
@@ -81,35 +87,44 @@ pub async fn collect_for_all_clusters(config: &Config) -> Result<IngressCollecti
     let mut result = Vec::new();
     let client = kube::Client::try_default().await?;
 
+    // Local cluster as its own group named "local"
     if let Some(local) = config.local.as_ref()
         && local.enabled
     {
-        if let Some(namespaces) = local.namespaces.as_ref() {
+        let cluster_info = if let Some(namespaces) = local.namespaces.as_ref() {
             let mut collected = Vec::new();
             for namespace in namespaces.iter() {
                 collected
                     .append(&mut collect_ingresses(config, client.clone(), Some(namespace)).await?);
             }
-            result.push(transform_to_info(
-                "local".to_owned(),
-                &local.description,
-                collected,
-            ));
+            transform_to_info("local".to_owned(), &local.description, collected)
         } else {
-            result.push(transform_to_info(
+            transform_to_info(
                 "local".to_owned(),
                 &local.description,
                 collect_ingresses(config, client.clone(), None).await?,
-            ));
-        }
+            )
+        };
+        result.push(GroupInfo {
+            name: "local".to_owned(),
+            clusters: vec![cluster_info],
+        });
     }
 
-    // Remote clusters
+    // Remote clusters by group
     if let Some(remotes) = config.remote.as_ref() {
-        for remote in remotes.iter() {
-            if let Some(clusterinfo) = collect_from_remote(config, remote, client.clone()).await {
-                result.push(clusterinfo);
+        for (group_name, clusters) in remotes.iter() {
+            let mut group_clusters = Vec::new();
+            for remote in clusters.iter() {
+                if let Some(clusterinfo) = collect_from_remote(config, remote, client.clone()).await
+                {
+                    group_clusters.push(clusterinfo);
+                }
             }
+            result.push(GroupInfo {
+                name: group_name.0.clone(),
+                clusters: group_clusters,
+            });
         }
     }
 

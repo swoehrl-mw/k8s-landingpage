@@ -60,10 +60,11 @@ config:
     enabled: true
 
   # remote:
-  #   - name: foobar
-  #     kubeconfigSecret:
-  #       name: foobar
-  #       namespace: default
+  #   allclusters:
+  #     - name: foobar
+  #       kubeconfigSecret:
+  #         name: foobar
+  #         namespace: default
 
 
 oidc:
