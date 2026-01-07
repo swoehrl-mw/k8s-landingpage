@@ -1,8 +1,255 @@
-{% for cluster in clusters %}
-<h2>{{cluster.name}} {% if cluster.description %} ({{cluster.description}}){% endif %}</h2>
-<ul>
-{% for ingress in cluster.ingresses %}
-<li><a href="{{ingress.url}}">{{ingress.name}}</a>{% if ingress.description%} ({{ingress.description}}){% endif %}</li>
-{% endfor %}
-</ul>
-{% endfor %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>K8s Landingpage</title>
+    <style>
+        :root {
+            /* Color Palette - Dark Mode */
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent-color: #38bdf8;
+            --accent-hover: #0ea5e9;
+            --border-color: #334155;
+            --header-bg: rgba(15, 23, 42, 0.8);
+
+            /* Gradients */
+            --card-gradient: linear-gradient(145deg, #1e293b, #0f172a);
+
+            /* Spacing */
+            --spacing-sm: 0.5rem;
+            --spacing-md: 1rem;
+            --spacing-lg: 1.5rem;
+            --spacing-xl: 3rem;
+
+            /* Typography */
+            --font-main: 'Segoe UI', system-ui, -apple-system, sans-serif;
+
+            /* Effects */
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.15);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.15);
+            --transition-speed: 0.2s;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-main);
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        /* Ambient Background Effect */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at center, rgba(56, 189, 248, 0.05) 0%, transparent 50%);
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: var(--spacing-xl) var(--spacing-md);
+        }
+
+        /* Header Styling */
+        header {
+            text-align: center;
+            margin-bottom: var(--spacing-xl);
+            padding-bottom: var(--spacing-lg);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(to right, #38bdf8, #818cf8);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+
+        /* Grid Layout for Clusters */
+        .clusters-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: var(--spacing-lg);
+        }
+
+        /* Cluster Card */
+        .cluster-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: var(--spacing-lg);
+            box-shadow: var(--shadow-md);
+            transition: transform var(--transition-speed), box-shadow var(--transition-speed);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .cluster-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+            border-color: var(--accent-color);
+        }
+
+        .cluster-header {
+            margin-bottom: var(--spacing-lg);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: var(--spacing-md);
+        }
+
+        .cluster-name {
+            font-size: 1.5rem;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+        }
+
+        .cluster-desc {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            font-style: italic;
+        }
+
+        /* Ingress List */
+        .ingress-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-sm);
+        }
+
+        .ingress-item {
+            display: flex;
+            align-items: center;
+        }
+
+        .ingress-link {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            padding: var(--spacing-md);
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            color: var(--text-primary);
+            text-decoration: none;
+            transition: all var(--transition-speed);
+            border: 1px solid transparent;
+        }
+
+        .ingress-link:hover {
+            background: rgba(56, 189, 248, 0.1);
+            border-color: rgba(56, 189, 248, 0.3);
+            padding-left: 1.25rem;
+            /* Slide effect */
+        }
+
+        .ingress-name {
+            font-weight: 600;
+            color: var(--accent-color);
+        }
+
+        .ingress-desc {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            margin-left: var(--spacing-md);
+        }
+
+        .arrow-icon {
+            opacity: 0;
+            transform: translateX(-10px);
+            transition: all var(--transition-speed);
+            color: var(--accent-color);
+        }
+
+        .ingress-link:hover .arrow-icon {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .clusters-grid {
+                grid-template-columns: 1fr;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            .ingress-link {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.25rem;
+            }
+
+            .ingress-desc {
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>K8s Landingpage</h1>
+            <p class="subtitle">Kubernetes Cluster Ingress Overview</p>
+        </header>
+
+        <div class="clusters-grid">
+            {% for cluster in clusters %}
+            <article class="cluster-card">
+                <div class="cluster-header">
+                    <h2 class="cluster-name">{{ cluster.name }}</h2>
+                    {% if cluster.description %}
+                    <p class="cluster-desc">{{ cluster.description }}</p>
+                    {% endif %}
+                </div>
+
+                <ul class="ingress-list">
+                    {% for ingress in cluster.ingresses %}
+                    <li class="ingress-item">
+                        <a href="{{ ingress.url }}" class="ingress-link" target="_blank" rel="noopener noreferrer">
+                            <div>
+                                <span class="ingress-name">{{ ingress.name }}</span>
+                                {% if ingress.description %}
+                                <span class="ingress-desc">{{ ingress.description }}</span>
+                                {% endif %}
+                            </div>
+                            <span class="arrow-icon">→</span>
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </article>
+            {% endfor %}
+        </div>
+    </div>
+</body>
+
+</html>
