@@ -1,8 +1,8 @@
 # K8s Landingpage
 
-K8s-Landingpage is a lightweight application that scans your Kubernetes clusters, local or remote via Cluster API, and renders a simple, customizable landing page listing every published Ingress alongside friendly metadata.
+K8s-Landingpage is a lightweight application that scans your Kubernetes clusters, local or remote via Cluster API, and renders a simple, customizable landing page listing every published route alongside friendly metadata.
 
-Ship it with the provided Helm chart, plug in optional OIDC auth, and tailor the UI by dropping in your own template or static assets. It’s ideal for platform teams that want a central, discoverable catalog of ingress endpoints without wiring together dashboards or maintaining bespoke tooling.
+Ship it with the provided Helm chart, plug in optional OIDC auth, and tailor the UI by dropping in your own template or static assets. It’s ideal for platform teams that want a central, discoverable catalog of endpoints without wiring together dashboards or maintaining bespoke tooling.
 
 ## Getting started
 
@@ -22,7 +22,7 @@ Now you can open [http://localhost:8000](http://localhost:8000) in your browser 
 
 ## Configuration
 
-This tool can list ingresses both for the local cluster and for any connected remote clusters managed by [Cluster API](https://cluster-api.sigs.k8s.io/). It does this by reading the kubeconfig from a secret, connecting to that cluster and listing `Ingress` objects.
+This tool can list routes both for the local cluster and for any connected remote clusters managed by [Cluster API](https://cluster-api.sigs.k8s.io/). It does this by reading the kubeconfig from a secret, connecting to that cluster and listing `Ingress` objects. In addition it will try to list any `HTTPRoute` objects (from [Gateway API](https://gateway-api.sigs.k8s.io/)). Should this fail (either due to missing permissions or the CRD not being installed, these will be ignored).
 
 The following configuration options for the Helm Chart are available:
 
@@ -31,6 +31,7 @@ config:
   global:
     refreshIntervalSeconds: 30  # How often should the controller refresh the list of ingress objects
     onlyWithAnnotation: false  # Only list ingress objects with specific annotations (see below)
+    httproutes: true # Optional, defaults to true, can be used to enable/disable checking for httproutes (if you don't have them and want to skip the warning in the logs)
 
   local:
     enabled: true  # Collect ingress objects from the local cluster (requires RBAC permissions)
@@ -45,10 +46,10 @@ config:
           namespace: default  # Namespace the secret is placed in
 ```
 
-You can use annotations on the ingress objects to provide easy to understand names and descriptions. The annotations are `landingpage.info/name` and `landingpage.info/description`.
+You can use annotations on the `Ingress`/`HTTPRoute` objects to provide easy to understand names and descriptions. The annotations are `landingpage.info/name` and `landingpage.info/description`.
 By default the tool will list all ingress objects it finds. If you set `config.global.onlyWithAnnotation` to `true`, it will filter out any that do not have either of the landingpage annotations.
 
-The helm chart creates a custom `ClusterRole` with permissions to read `Ingress` and `Secret` objects in the entire cluster. You might want to create your own more restricted role and serviceaccount and point the tool to them via the following Helm Chart values:
+The helm chart creates a custom `ClusterRole` with permissions to read `Ingress`, `HTTPRoute` and `Secret` objects in the entire cluster. You might want to create your own more restricted role and serviceaccount and point the tool to them via the following Helm Chart values:
 
 ```yaml
 serviceAccount:

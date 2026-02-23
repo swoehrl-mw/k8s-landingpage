@@ -25,7 +25,7 @@ serviceAccount:
   # The name of the service account to use.
   # If not set and create is true, a name is generated using the fullname template
   name: ""
-  # Create clusterrolebinding to access secrets and ingresses
+  # Create clusterrolebinding to access secrets, ingresses and httproutes
   rbac: true
 
 

@@ -18,6 +18,7 @@ pub struct Global {
     #[serde(default)]
     pub only_with_annotation: bool,
     pub refresh_interval_seconds: Option<u64>,
+    pub httproutes: Option<bool>,
 }
 
 #[derive(Deserialize, Debug, Clone, Default)]

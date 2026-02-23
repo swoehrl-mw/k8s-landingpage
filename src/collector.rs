@@ -1,4 +1,5 @@
 use k8s_openapi::api::{core::v1::Secret, networking::v1::Ingress};
+use kcr_gateway_networking_k8s_io::v1::httproutes::HTTPRoute;
 use kube::{
     Api, Client, ResourceExt,
     api::ListParams,
@@ -17,7 +18,7 @@ const NAME_ANNOTATION: &str = "landingpage.info/name";
 const DESCRIPTION_ANNOTATION: &str = "landingpage.info/description";
 
 #[derive(Clone, Debug, Serialize)]
-struct IngressSpec {
+struct RouteSpec {
     pub name: String,
     pub namespace: String,
     pub host: String,
@@ -95,14 +96,14 @@ pub async fn collect_for_all_clusters(config: &Config) -> Result<IngressCollecti
             let mut collected = Vec::new();
             for namespace in namespaces.iter() {
                 collected
-                    .append(&mut collect_ingresses(config, client.clone(), Some(namespace)).await?);
+                    .append(&mut collect_routes(config, client.clone(), Some(namespace)).await?);
             }
             transform_to_info("local".to_owned(), &local.description, collected)
         } else {
             transform_to_info(
                 "local".to_owned(),
                 &local.description,
-                collect_ingresses(config, client.clone(), None).await?,
+                collect_routes(config, client.clone(), None).await?,
             )
         };
         result.push(GroupInfo {
@@ -147,7 +148,7 @@ async fn collect_from_remote(
     if let Some(namespaces) = remote.namespaces.as_ref() {
         let mut collected = Vec::new();
         for namespace in namespaces.iter() {
-            match collect_ingresses(config, remote_client.clone(), Some(namespace)).await {
+            match collect_routes(config, remote_client.clone(), Some(namespace)).await {
                 Ok(mut specs) => collected.append(&mut specs),
                 Err(err) => tracing::error!("Could not read ingressess from cluster: {err}"),
             }
@@ -158,7 +159,7 @@ async fn collect_from_remote(
             collected,
         ))
     } else {
-        match collect_ingresses(config, remote_client.clone(), None).await {
+        match collect_routes(config, remote_client.clone(), None).await {
             Ok(specs) => Some(transform_to_info(
                 remote.name.clone(),
                 &remote.description,
@@ -213,7 +214,7 @@ async fn collect_ingresses(
     config: &Config,
     client: Client,
     namespace: Option<&str>,
-) -> Result<Vec<IngressSpec>> {
+) -> Result<Vec<RouteSpec>> {
     let api = if let Some(namespace) = namespace {
         Api::<Ingress>::namespaced(client, namespace)
     } else {
@@ -252,7 +253,7 @@ async fn collect_ingresses(
                 continue;
             };
             for path in rule.http.unwrap_or_default().paths {
-                result.push(IngressSpec {
+                result.push(RouteSpec {
                     name: name.clone(),
                     namespace: ingress
                         .metadata
@@ -272,10 +273,119 @@ async fn collect_ingresses(
     Ok(result)
 }
 
+async fn collect_http_routes(
+    config: &Config,
+    client: Client,
+    namespace: Option<&str>,
+) -> Result<Vec<RouteSpec>> {
+    let api = if let Some(namespace) = namespace {
+        Api::<HTTPRoute>::namespaced(client, namespace)
+    } else {
+        Api::<HTTPRoute>::all(client)
+    };
+    let only_with_annotation = config
+        .global
+        .as_ref()
+        .map(|g| g.only_with_annotation)
+        .unwrap_or_default();
+    let params = ListParams::default();
+
+    let object_list = match api.list(&params).await {
+        Ok(result) => result,
+        Err(err) => {
+            tracing::warn!("Could not list HTTPRoutes (missing CRD/permissions?): {err}");
+            return Ok(Vec::new());
+        }
+    };
+
+    let mut result = Vec::new();
+
+    for route in object_list {
+        let name = route.name_any();
+
+        if only_with_annotation {
+            if let Some(annotations) = route.metadata.annotations.as_ref() {
+                if annotations.get(NAME_ANNOTATION).is_none()
+                    && annotations.get(DESCRIPTION_ANNOTATION).is_none()
+                {
+                    continue;
+                }
+            } else {
+                continue;
+            }
+        }
+
+        let hostnames = route.spec.hostnames.clone().unwrap_or_default();
+        if hostnames.is_empty() {
+            continue;
+        }
+
+        let mut paths: Vec<Option<String>> = Vec::new();
+        if let Some(rules) = route.spec.rules.as_ref() {
+            for rule in rules {
+                if let Some(matches) = rule.matches.as_ref() {
+                    for m in matches {
+                        if let Some(path) = m.path.as_ref()
+                            && let Some(value) = path.value.clone()
+                        {
+                            let normalized = if value.starts_with('/') {
+                                value
+                            } else {
+                                format!("/{value}")
+                            };
+                            paths.push(Some(normalized));
+                        }
+                    }
+                }
+            }
+        }
+        if paths.is_empty() {
+            paths.push(None);
+        }
+
+        for host in hostnames {
+            for path in paths.iter().cloned() {
+                result.push(RouteSpec {
+                    name: name.clone(),
+                    namespace: route
+                        .metadata
+                        .namespace
+                        .clone()
+                        .unwrap_or_else(|| "default".to_owned()),
+                    host: host.clone(),
+                    tls_used: true,
+                    path,
+                    annotations: route.metadata.annotations.clone().unwrap_or_default(),
+                    labels: route.metadata.labels.clone().unwrap_or_default(),
+                });
+            }
+        }
+    }
+
+    Ok(result)
+}
+
+async fn collect_routes(
+    config: &Config,
+    client: Client,
+    namespace: Option<&str>,
+) -> Result<Vec<RouteSpec>> {
+    let mut result = collect_ingresses(config, client.clone(), namespace).await?;
+    if config
+        .global
+        .as_ref()
+        .and_then(|g| g.httproutes)
+        .unwrap_or(true)
+    {
+        result.append(&mut collect_http_routes(config, client, namespace).await?);
+    }
+    Ok(result)
+}
+
 fn transform_to_info(
     cluster_name: String,
     description: &Option<String>,
-    input: Vec<IngressSpec>,
+    input: Vec<RouteSpec>,
 ) -> ClusterInfo {
     let ingresses = input
         .into_iter()

@@ -1,6 +1,7 @@
 global:
   refreshIntervalSeconds: 30
   onlyWithAnnotation: false
+  httproutes: true
 
 local:
   enabled: true
