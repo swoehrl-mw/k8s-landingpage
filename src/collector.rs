@@ -370,7 +370,15 @@ async fn collect_routes(
     client: Client,
     namespace: Option<&str>,
 ) -> Result<Vec<RouteSpec>> {
-    let mut result = collect_ingresses(config, client.clone(), namespace).await?;
+    let mut result = Vec::new();
+        if config
+        .global
+        .as_ref()
+        .and_then(|g| g.ingresses)
+        .unwrap_or(true)
+    {
+        result.append(&mut collect_ingresses(config, client.clone(), namespace).await?);
+    }
     if config
         .global
         .as_ref()

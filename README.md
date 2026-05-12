@@ -31,7 +31,8 @@ config:
   global:
     refreshIntervalSeconds: 30  # How often should the controller refresh the list of ingress objects
     onlyWithAnnotation: false  # Only list ingress objects with specific annotations (see below)
-    httproutes: true # Optional, defaults to true, can be used to enable/disable checking for httproutes (if you don't have them and want to skip the warning in the logs)
+    ingresses: true # Optional, defaults to true, can be used to enable/disable checking for Ingresses (if you already have switched to HTTPRoutes)
+    httproutes: true # Optional, defaults to true, can be used to enable/disable checking for HTTPRoutes (if you don't have them and want to skip the warning in the logs)
 
   local:
     enabled: true  # Collect ingress objects from the local cluster (requires RBAC permissions)
