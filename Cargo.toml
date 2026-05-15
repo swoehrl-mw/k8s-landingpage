@@ -12,7 +12,7 @@ serde_json = "1.0.149"
 serde_yaml = "0.9.34"
 tokio = { version = "1.52.2", features = ["full"] }
 tower-http = { version = "0.6.9", features = ["fs", "set-header", "cors"] }
-tower-sessions = "0.15.0"
+tower-sessions = "0.14.0" # Align with version in axum-oidc
 tower = "0.5.3"
 thiserror = "2.0.18"
 minijinja = "2.19.0"
