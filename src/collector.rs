@@ -1,5 +1,4 @@
 use k8s_openapi::api::{core::v1::Secret, networking::v1::Ingress};
-use kcr_gateway_networking_k8s_io::v1::httproutes::HTTPRoute;
 use kube::{
     Api, Client, ResourceExt,
     api::ListParams,
@@ -12,6 +11,7 @@ use tokio::sync::RwLock;
 use crate::{
     config::{Config, RemoteCluster},
     errors::{Error, Result},
+    http_route::HttpRoute,
 };
 
 const NAME_ANNOTATION: &str = "landingpage.info/name";
@@ -279,9 +279,9 @@ async fn collect_http_routes(
     namespace: Option<&str>,
 ) -> Result<Vec<RouteSpec>> {
     let api = if let Some(namespace) = namespace {
-        Api::<HTTPRoute>::namespaced(client, namespace)
+        Api::<HttpRoute>::namespaced(client, namespace)
     } else {
-        Api::<HTTPRoute>::all(client)
+        Api::<HttpRoute>::all(client)
     };
     let only_with_annotation = config
         .global
@@ -371,7 +371,7 @@ async fn collect_routes(
     namespace: Option<&str>,
 ) -> Result<Vec<RouteSpec>> {
     let mut result = Vec::new();
-        if config
+    if config
         .global
         .as_ref()
         .and_then(|g| g.ingresses)

@@ -2,6 +2,7 @@ pub mod api;
 pub mod collector;
 pub mod config;
 pub mod errors;
+pub mod http_route;
 
 // Avoid musl's default allocator due to lackluster performance
 // https://nickb.dev/blog/default-musl-allocator-considered-harmful-to-performance

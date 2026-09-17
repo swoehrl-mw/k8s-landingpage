@@ -98,3 +98,34 @@ staticConfigMap: my-assets  # Name of the ConfigMap with supporting static asset
 This tools is developed in [Rust](https://rust-lang.org/learn/get-started/). You need a current Rust+Cargo toolchain for local development.
 
 For testing you also need access to a Kubernetes cluster. If needed you can setup a local one using [K3d](https://k3d.io) and add some dummy Ingress objects to it. Then adapt the `config.yaml` in this repository to your liking and run `cargo run`. The landingpage will be available under [http://localhost:8000](http://localhost:8000).
+
+### Regenerating the HTTPRoute types
+
+The HTTPRoute types in `src/http_route.rs` come from the Gateway API CRD and are generated with [Kopium](https://github.com/kube-rs/kopium). Install the pinned Kopium version and download the pinned CRD:
+
+```bash
+cargo install kopium --version 0.24.1 --locked
+curl --fail --silent --show-error --location \
+  https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.6.2/config/crd/standard/gateway.networking.k8s.io_httproutes.yaml \
+  --output /tmp/gateway.networking.k8s.io_httproutes.yaml
+```
+
+Generate the Rust types into a temporary file:
+
+```bash
+kopium \
+  --filename /tmp/gateway.networking.k8s.io_httproutes.yaml \
+  --api-version v1 \
+  --hide-prelude \
+  > /tmp/http_route.rs
+```
+
+`src/http_route.rs` intentionally keeps only `HttpRouteSpec`, `HttpRouteRules`, `HttpRouteRulesMatches`, and `HttpRouteRulesMatchesPath`. The collector only reads hostnames and match paths, and Serde ignores the other fields. Copy the updated versions of those declarations from `/tmp/http_route.rs`, retain the imports and test in the checked-in file, then verify the result:
+
+```bash
+cargo fmt --all --check
+cargo test
+cargo clippy --all-targets -- -D warnings
+```
+
+When updating Gateway API or Kopium, change the pinned versions in these commands and in the generation comment at the top of `src/http_route.rs`.
