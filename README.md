@@ -64,18 +64,21 @@ serviceAccount:
 
 ### OIDC
 
-K8s-Landingpage has experimental support for [OIDC](https://openid.net/developers/how-connect-works/) authentication to protect the landingpage. To use it, create a client in your Identity Provider (tested with [Dex](https://dexidp.io/)) with a client ID and secret. Store both in a secret (with keys `clientId` and `clientSecret`), then add the following Helm Chart values:
+K8s-Landingpage has support for [OIDC](https://openid.net/developers/how-connect-works/) authentication to protect the landingpage. To use it:
+
+1. Create an Ingress or HTTPRoute to expose the landingpage
+2. Create a client in your Identity Provider (tested with [Dex](https://dexidp.io/)) with a client ID and secret. Configure a callback/redirect URL of `<baseUrl>/callback` (e.g. `https://landingpage.internal/callback`)
+3. Store client ID and secret in a secret (with keys `clientId` and `clientSecret`)
+4. Add the following Helm Chart values:
 
 ```yaml
 oidc:
   enabled: true
   issuer: https://auth.mycompany.com  # URL of the OIDC Identitiy Provider Issuer URL
   secret: landingpage-oidc  # Name of the secret that contains keys "clientId" and "clientSecret"
-  baseUrl: https://landingpage  # Base URL this app is served under (use it also for the Identitiy Provider Redirect URL)
+  baseUrl: https://landingpage.internal  # Base URL this app is served under
   renewalInterval: # Optional, interval in seconds after which to reload OIDC discovery URL. Use if your Identity Provider rotates keys regularly (like Dex does)
 ```
-
-Currently you must still create your own ingress to expose the landingpage.
 
 After configuration is complete, when first opening the landingpage you will automatically get redirected to your Identiy Provider for login.
 

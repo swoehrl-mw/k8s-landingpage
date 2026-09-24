@@ -5,13 +5,19 @@ use axum::{
     Extension, Router,
     body::Body,
     error_handling::HandleErrorLayer,
-    extract::State,
-    http::{Request, Uri},
+    extract::{FromRequestParts, State},
+    http::{Request, Uri, request::Parts},
     middleware::Next,
     response::{Html, IntoResponse, Response},
-    routing::{get, get_service},
+    routing::{any, get, get_service},
 };
-use axum_oidc::{EmptyAdditionalClaims, OidcAuthLayer, OidcLoginLayer, error::MiddlewareError};
+use axum_oidc::{
+    AdditionalClaims, EmptyAdditionalClaims, OidcAuthLayer, OidcClient, OidcLoginLayer,
+    OidcSession,
+    error::MiddlewareError,
+    handle_oidc_redirect,
+    openidconnect::{ClientId, ClientSecret, IssuerUrl, core::CoreGenderClaim},
+};
 use minijinja::{Environment, context};
 use tokio::sync::Mutex;
 use tower::ServiceBuilder;
@@ -23,6 +29,32 @@ use tower_sessions::{
 };
 
 use crate::collector::IngressCollectionWrapper;
+
+const CALLBACK_PATH: &str = "/callback";
+
+struct Session(tower_sessions::Session);
+
+impl<S: Send + Sync> FromRequestParts<S> for Session {
+    type Rejection = <tower_sessions::Session as FromRequestParts<S>>::Rejection;
+
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        tower_sessions::Session::from_request_parts(parts, state)
+            .await
+            .map(Self)
+    }
+}
+
+impl<AC: AdditionalClaims> axum_oidc::Session<AC> for Session {
+    type Error = tower_sessions::session::Error;
+
+    async fn get(&self) -> Result<OidcSession<AC, CoreGenderClaim>, Self::Error> {
+        Ok(self.0.get("axum-oidc").await?.unwrap_or_default())
+    }
+
+    async fn set(&mut self, value: OidcSession<AC, CoreGenderClaim>) -> Result<(), Self::Error> {
+        self.0.insert("axum-oidc", value).await
+    }
+}
 
 async fn index(
     Extension(collection): Extension<IngressCollectionWrapper>,
@@ -43,29 +75,36 @@ async fn health() -> &'static str {
     "OK"
 }
 
-pub struct InnerOidcState {
-    pub issuer: String,
-    pub base_url: String,
-    pub client_id: String,
-    pub client_secret: Option<String>,
-    pub renewal_interval: Option<Duration>,
-    pub last_update: Instant,
-    pub layer: Option<OidcAuthLayer<EmptyAdditionalClaims>>,
+struct InnerOidcState {
+    issuer: String,
+    base_url: String,
+    client_id: String,
+    client_secret: Option<String>,
+    renewal_interval: Option<Duration>,
+    last_update: Instant,
+    layer: Option<OidcAuthLayer<EmptyAdditionalClaims, Session>>,
 }
 
 impl InnerOidcState {
-    pub async fn renew_layer(&mut self) {
+    async fn renew_layer(&mut self) {
         tracing::info!("Renewing oidc config");
-        let layer = OidcAuthLayer::<EmptyAdditionalClaims>::discover_client(
-            Uri::from_maybe_shared(self.base_url.clone()).expect("OIDC_BASE_URL is not valid"),
-            self.issuer.clone(),
-            self.client_id.clone(),
-            self.client_secret.clone(),
-            vec![],
-        )
-        .await
-        .expect("Could not initialize OIDC client");
-        self.layer = Some(layer);
+        let redirect_url = format!("{}{CALLBACK_PATH}", self.base_url.trim_end_matches('/'));
+        let mut builder = OidcClient::<EmptyAdditionalClaims>::builder()
+            .with_default_http_client()
+            .with_redirect_url(
+                Uri::from_maybe_shared(redirect_url).expect("OIDC_BASE_URL is not valid"),
+            )
+            .with_client_id(ClientId::new(self.client_id.clone()));
+        if let Some(client_secret) = &self.client_secret {
+            builder = builder.with_client_secret(ClientSecret::new(client_secret.clone()));
+        }
+        let client = builder
+            .discover(IssuerUrl::new(self.issuer.clone()).expect("OIDC_ISSUER is not valid"))
+            .await
+            .expect("Could not initialize OIDC client")
+            .build();
+        self.layer = Some(OidcAuthLayer::new(client));
+        self.last_update = Instant::now();
     }
 }
 
@@ -137,9 +176,13 @@ pub async fn api(collection: IngressCollectionWrapper) {
             .layer(HandleErrorLayer::new(|e: MiddlewareError| async {
                 e.into_response()
             }))
-            .layer(OidcLoginLayer::<EmptyAdditionalClaims>::new());
+            .layer(OidcLoginLayer::<EmptyAdditionalClaims, Session>::new());
 
         app.layer(oidc_login_service)
+            .route(
+                CALLBACK_PATH,
+                any(handle_oidc_redirect::<EmptyAdditionalClaims, Session>),
+            )
             .layer(from_fn_with_state(
                 init_oidc_state(issuer).await,
                 oidc_layer,
